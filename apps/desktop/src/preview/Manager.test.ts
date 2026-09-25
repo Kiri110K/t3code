@@ -2605,7 +2605,7 @@ describe("PreviewManager", () => {
     ),
   );
 
-  effectIt.effect("releases snapshot control when every capture attempt stalls", () =>
+  effectIt.effect("keeps page data and releases control when every capture attempt stalls", () =>
     withManager((manager) =>
       Effect.gen(function* () {
         const capturePage = vi.fn(() => new Promise<TestCapturedPreviewImage>(() => {}));
@@ -2648,16 +2648,13 @@ describe("PreviewManager", () => {
 
         yield* TestClock.adjust(4_000);
         const exit = yield* Fiber.join(snapshot);
-        expect(Exit.isFailure(exit)).toBe(true);
         expect(capturePage).toHaveBeenCalledTimes(3);
-        if (Exit.isSuccess(exit)) return;
-        const error = Option.getOrThrow(Cause.findErrorOption(exit.cause));
-        expect(error).toMatchObject({
-          _tag: "PreviewOperationError",
-          operation: "automationSnapshot.capturePage",
-          tabId: "tab_1",
-          webContentsId: 42,
-          cause: { _tag: "TimeoutError" },
+        expect(Exit.isSuccess(exit)).toBe(true);
+        if (Exit.isFailure(exit)) return;
+        expect(exit.value).toMatchObject({
+          url: "https://example.com",
+          visibleText: "Example",
+          screenshot: null,
         });
         expect(yield* Fiber.join(evaluate)).toBe(42);
       }),

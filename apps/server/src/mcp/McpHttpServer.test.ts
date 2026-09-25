@@ -410,6 +410,35 @@ it.effect("saves the snapshot PNG on request and reports its path", () =>
   ).pipe(Effect.provide(TestLayer)),
 );
 
+it.effect("returns page data and the reason when the browser captured no screenshot", () =>
+  Effect.scoped(
+    Effect.gen(function* () {
+      const config = yield* ServerConfig.ServerConfig;
+      const fileSystem = yield* FileSystem.FileSystem;
+      yield* serveSnapshots("mcp-no-screenshot-client", { ...snapshotResult, screenshot: null });
+
+      for (const args of [{}, { save: true }, { save: true, includeImage: false }]) {
+        const snapshot = yield* callSnapshot(args);
+
+        expect(snapshot.isError).toBe(false);
+        expect(snapshot.structuredContent).toMatchObject({
+          url: snapshotResult.url,
+          visibleText: snapshotResult.visibleText,
+          screenshot: null,
+          screenshotUnavailable: expect.stringContaining("No screenshot"),
+        });
+        expect(snapshot.structuredContent).not.toHaveProperty("screenshotPath");
+        expect(snapshot.content.some((block) => block.type === "image")).toBe(false);
+        expect(snapshot.content.at(-1)).toMatchObject({
+          type: "text",
+          text: expect.stringContaining("No screenshot"),
+        });
+      }
+      expect(yield* fileSystem.exists(config.browserArtifactsDir)).toBe(false);
+    }),
+  ).pipe(Effect.provide(TestLayer)),
+);
+
 it.effect("reports a tagged error when the screenshot cannot be saved", () =>
   Effect.scoped(
     Effect.gen(function* () {

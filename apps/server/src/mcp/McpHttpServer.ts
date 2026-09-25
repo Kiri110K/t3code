@@ -129,6 +129,8 @@ const MAX_SNAPSHOT_ELEMENT_NAME_CHARS = 200;
 const MAX_SNAPSHOT_LOG_ENTRIES = 40;
 const MAX_SNAPSHOT_LOG_TEXT_CHARS = 500;
 const MAX_SNAPSHOT_IDENTIFIER_CHARS = 2_048;
+const SCREENSHOT_UNAVAILABLE_NOTE =
+  "No screenshot: the tab produced no frame to capture, usually because the T3 window is not being drawn. The page data is current. Retry once T3 is on screen.";
 
 const encodeJsonText = Schema.encodeSync(Schema.fromJsonString(Schema.Unknown));
 const utf8Length = (text: string) => Buffer.byteLength(text, "utf8");
@@ -414,12 +416,15 @@ const registerPreviewSnapshot = Effect.fn("McpHttpServer.registerPreviewSnapshot
                   readonly data: string;
                   readonly width: number;
                   readonly height: number;
-                };
+                } | null;
               };
               const { screenshot, ...page } = snapshot;
-              const png = new Uint8Array(Buffer.from(screenshot.data, "base64"));
+              const png =
+                screenshot === null ? null : new Uint8Array(Buffer.from(screenshot.data, "base64"));
               const screenshotPath =
-                payload?.save === true ? yield* saveScreenshot(snapshot.url, png) : undefined;
+                payload?.save === true && png !== null
+                  ? yield* saveScreenshot(snapshot.url, png)
+                  : undefined;
               if (screenshotPath !== undefined && payload?.includeImage === false) {
                 // The agent only wants a file to show the user. The url keeps the site icon on the tool row.
                 const saved = {
@@ -434,11 +439,18 @@ const registerPreviewSnapshot = Effect.fn("McpHttpServer.registerPreviewSnapshot
               }
               const metadata = {
                 ...page,
-                screenshot: {
-                  mimeType: screenshot.mimeType,
-                  width: screenshot.width,
-                  height: screenshot.height,
-                },
+                screenshot:
+                  screenshot === null
+                    ? null
+                    : {
+                        mimeType: screenshot.mimeType,
+                        width: screenshot.width,
+                        height: screenshot.height,
+                      },
+                // Claude Code shows structuredContent instead of the text blocks, so the reason lives here too.
+                ...(screenshot === null
+                  ? { screenshotUnavailable: SCREENSHOT_UNAVAILABLE_NOTE }
+                  : {}),
                 ...(screenshotPath === undefined ? {} : { screenshotPath }),
               };
               const bounded = boundSnapshotMetadata(metadata);
@@ -465,9 +477,11 @@ const registerPreviewSnapshot = Effect.fn("McpHttpServer.registerPreviewSnapshot
                           text: `Snapshot text was bounded. Omitted: ${bounded.omitted.join("; ")}.`,
                         },
                       ]),
-                  ...(payload?.includeImage === false
-                    ? []
-                    : [{ type: "image" as const, data: png, mimeType: screenshot.mimeType }]),
+                  ...(png === null
+                    ? [{ type: "text" as const, text: SCREENSHOT_UNAVAILABLE_NOTE }]
+                    : payload?.includeImage === false
+                      ? []
+                      : [{ type: "image" as const, data: png, mimeType: "image/png" as const }]),
                 ],
               });
             }),

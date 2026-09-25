@@ -3723,26 +3723,38 @@ const makeNativeOperations = Effect.fn("PreviewManager.makeOperations")(function
         })()`,
         true,
       );
+      // A guest that produces no frame still has readable page data.
+      const captureImage: Effect.Effect<
+        Electron.NativeImage | null,
+        PreviewWebContentsNotFoundError
+      > = capturePageWithRetry(
+        {
+          operation: "automationSnapshot.capturePage",
+          tabId,
+          webContentsId: wc.id,
+        },
+        tabId,
+        wc,
+      ).pipe(Effect.catchIf(isPreviewOperationError, () => Effect.succeed(null)));
       const [accessibility, sourceImage, diagnostics, timelines] = yield* Effect.all([
         send("Accessibility.getFullAXTree"),
-        capturePageWithRetry(
-          {
-            operation: "automationSnapshot.capturePage",
-            tabId,
-            webContentsId: wc.id,
-          },
-          tabId,
-          wc,
-        ),
+        captureImage,
         Ref.get(diagnosticsRef),
         Ref.get(actionTimelineRef),
       ]);
-      const sourceSize = sourceImage.getSize();
-      const image =
-        sourceSize.width > MAX_SCREENSHOT_WIDTH
-          ? sourceImage.resize({ width: MAX_SCREENSHOT_WIDTH })
-          : sourceImage;
-      const size = image.getSize();
+      const encodeScreenshot = (source: Electron.NativeImage) => {
+        const image =
+          source.getSize().width > MAX_SCREENSHOT_WIDTH
+            ? source.resize({ width: MAX_SCREENSHOT_WIDTH })
+            : source;
+        const size = image.getSize();
+        return {
+          mimeType: "image/png" as const,
+          data: image.toPNG().toString("base64"),
+          width: size.width,
+          height: size.height,
+        };
+      };
       const browserDiagnostics = diagnostics.get(wc.id);
       return {
         ...page,
@@ -3750,12 +3762,7 @@ const makeNativeOperations = Effect.fn("PreviewManager.makeOperations")(function
         consoleEntries: [...(browserDiagnostics?.consoleEntries ?? [])],
         networkEntries: [...(browserDiagnostics?.networkEntries ?? [])],
         actionTimeline: [...(timelines.get(tabId) ?? [])],
-        screenshot: {
-          mimeType: "image/png" as const,
-          data: image.toPNG().toString("base64"),
-          width: size.width,
-          height: size.height,
-        },
+        screenshot: sourceImage === null ? null : encodeScreenshot(sourceImage),
       };
     },
   );
