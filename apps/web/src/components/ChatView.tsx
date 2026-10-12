@@ -7757,13 +7757,13 @@ export default function ChatView(props: ChatViewProps) {
   // off Compact old Claude threads opts out of compact-before-send entirely.
   const resumeCompactionTokens =
     activeContextWindow &&
-    resumeCompactionEnabled &&
     !resumeCompactionPermanentlyDismissed &&
     !nativeResumeCompactionDismissed &&
     !compactDisabled &&
     !hasHeldQueuedRuns &&
     multipleModelSelections === null &&
     shouldOfferResumeCompaction({
+      enabled: resumeCompactionEnabled,
       provider: selectedProvider,
       usedTokens: activeContextWindow.usedTokens,
       updatedAt: activeContextWindow.updatedAt,

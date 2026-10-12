@@ -62,8 +62,10 @@ export function hasDismissedResumeCompaction(
 }
 
 /** True once a large Claude context's prompt cache has expired, so the next
-    turn would re-read all of it uncached. */
+    turn would re-read all of it uncached. `enabled` is the user's Compact old
+    Claude threads setting. */
 export function shouldOfferResumeCompaction(input: {
+  readonly enabled: boolean;
   readonly provider: string | null | undefined;
   readonly usedTokens: number | null | undefined;
   readonly updatedAt: string | null | undefined;
@@ -71,6 +73,7 @@ export function shouldOfferResumeCompaction(input: {
   readonly now: string;
 }): boolean {
   if (
+    !input.enabled ||
     input.provider !== "claudeAgent" ||
     (input.usedTokens ?? 0) < CLAUDE_RESUME_COMPACTION_TOKENS
   ) {

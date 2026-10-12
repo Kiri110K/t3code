@@ -146,6 +146,7 @@ describe("shouldOfferResumeCompaction", () => {
   it("matches Claude's old-session age and context thresholds", () => {
     expect(
       shouldOfferResumeCompaction({
+        enabled: true,
         provider: "claudeAgent",
         usedTokens: 100_000,
         updatedAt: "2026-08-24T10:50:00.000Z",
@@ -157,6 +158,7 @@ describe("shouldOfferResumeCompaction", () => {
   it("does not prompt for recent or smaller sessions", () => {
     expect(
       shouldOfferResumeCompaction({
+        enabled: true,
         provider: "claudeAgent",
         usedTokens: 99_999,
         updatedAt: "2026-08-24T10:00:00.000Z",
@@ -165,6 +167,7 @@ describe("shouldOfferResumeCompaction", () => {
     ).toBe(false);
     expect(
       shouldOfferResumeCompaction({
+        enabled: true,
         provider: "claudeAgent",
         usedTokens: 200_000,
         updatedAt: "2026-08-24T10:51:00.000Z",
@@ -176,6 +179,7 @@ describe("shouldOfferResumeCompaction", () => {
   it("uses the reported prompt cache TTL instead of the fallback", () => {
     const offer = (updatedAt: string) =>
       shouldOfferResumeCompaction({
+        enabled: true,
         provider: "claudeAgent",
         usedTokens: 200_000,
         updatedAt,
@@ -189,7 +193,20 @@ describe("shouldOfferResumeCompaction", () => {
   it("does not show Claude's resume prompt for another provider", () => {
     expect(
       shouldOfferResumeCompaction({
+        enabled: true,
         provider: "codex",
+        usedTokens: 300_000,
+        updatedAt: "2026-08-24T09:00:00.000Z",
+        now,
+      }),
+    ).toBe(false);
+  });
+
+  it("does not compact before send once the user opts out", () => {
+    expect(
+      shouldOfferResumeCompaction({
+        enabled: false,
+        provider: "claudeAgent",
         usedTokens: 300_000,
         updatedAt: "2026-08-24T09:00:00.000Z",
         now,
