@@ -664,6 +664,19 @@ describe("ClientSettings context window meter", () => {
   });
 });
 
+describe("ClientSettings Claude resume compaction", () => {
+  it("defaults on and preserves an explicit opt-out", () => {
+    expect(decodeClientSettings({}).claudeResumeCompactionEnabled).toBe(true);
+    expect(
+      decodeClientSettings({ claudeResumeCompactionEnabled: false }).claudeResumeCompactionEnabled,
+    ).toBe(false);
+    expect(
+      decodeClientSettingsPatch({ claudeResumeCompactionEnabled: false })
+        .claudeResumeCompactionEnabled,
+    ).toBe(false);
+  });
+});
+
 describe("ClientSettings send shortcut", () => {
   it("defaults to Enter and validates the supported choices", () => {
     expect(decodeClientSettings({}).sendShortcut).toBe("enter");

@@ -454,6 +454,12 @@ export const SETTINGS_SEARCH_ITEMS = [
     searchTerms: ["composer rest resting scroll wheel conversation timeline shrink minimize"],
   },
   {
+    id: "claude-resume-compaction",
+    title: "Compact old Claude threads",
+    to: "/settings/general",
+    searchTerms: ["compact compaction chip stale idle prompt cache full history context send"],
+  },
+  {
     id: "send-shortcut",
     title: "Send shortcut",
     to: "/settings/general",

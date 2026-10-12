@@ -707,6 +707,9 @@ const PreviewPanel = lazy(() =>
 const DiffPanel = lazy(() => import("./DiffPanel"));
 const selectAutoShowFloatingPreview = (settings: { browserAutoShowFloatingPreview: boolean }) =>
   settings.browserAutoShowFloatingPreview;
+const selectClaudeResumeCompactionEnabled = (settings: {
+  claudeResumeCompactionEnabled: boolean;
+}) => settings.claudeResumeCompactionEnabled;
 const DevicePanel = lazy(() =>
   import("./device/DevicePanel").then((module) => ({ default: module.DevicePanel })),
 );
@@ -4184,6 +4187,7 @@ export default function ChatView(props: ChatViewProps) {
       selectedProvider,
     ],
   );
+  const resumeCompactionEnabled = useClientSettings(selectClaudeResumeCompactionEnabled);
   const [resumeCompactionPermanentlyDismissed, setResumeCompactionPermanentlyDismissed] =
     useLocalStorage(
       `t3code:resume-compaction-dismissed:${environmentId}:${activeProviderInstanceId ?? "claudeAgent"}`,
@@ -7749,9 +7753,11 @@ export default function ChatView(props: ChatViewProps) {
   // Tokens a stale Claude session would re-read on its next turn. While set,
   // the composer shows a Compact chip and Enter compacts first; turning the
   // chip off sends the next message with full history. Held queues and
-  // multi-model sends never compact first, so the offer hides for them.
+  // multi-model sends never compact first, so the offer hides for them. Turning
+  // off Compact old Claude threads opts out of compact-before-send entirely.
   const resumeCompactionTokens =
     activeContextWindow &&
+    resumeCompactionEnabled &&
     !resumeCompactionPermanentlyDismissed &&
     !nativeResumeCompactionDismissed &&
     !compactDisabled &&
